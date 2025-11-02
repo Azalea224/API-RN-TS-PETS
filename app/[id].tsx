@@ -1,13 +1,86 @@
 import { useLocalSearchParams } from "expo-router";
-import React from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { pets } from "../data/pets";
+import { getPetById } from "../api/pets";
+import { Pet } from "../data/pets";
 
 export default function PetDetails() {
   const { id } = useLocalSearchParams();
+  const [pet, setPet] = useState<Pet | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const pet = pets.find((p) => p.id === Number(id));
+  const fetchPetById = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const petData = await getPetById(id);
+      setPet(petData);
+    } catch (err) {
+      setError("Failed to load pet");
+      console.error("Error fetching pet:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!pet && !loading && !error) {
+    return (
+      <SafeAreaView style={styles.container} edges={["bottom"]}>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            onPress={fetchPetById}
+            style={styles.getPetButton}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.getPetButtonText}>Get Pet</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+        {error && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  if (loading && !pet) {
+    return (
+      <SafeAreaView style={styles.container} edges={["bottom"]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#6200EE" />
+          <Text style={styles.loadingText}>Loading pet...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error && !pet) {
+    return (
+      <SafeAreaView style={styles.container} edges={["bottom"]}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={fetchPetById} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!pet) {
     return (
@@ -21,6 +94,19 @@ export default function PetDetails() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          onPress={fetchPetById}
+          style={styles.refreshButton}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" size="small" />
+          ) : (
+            <Text style={styles.refreshButtonText}>Refresh Pet</Text>
+          )}
+        </TouchableOpacity>
+      </View>
       <ScrollView contentContainerStyle={styles.content}>
         <Image source={{ uri: pet.image }} style={styles.petImage} />
 
@@ -146,5 +232,54 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 18,
     color: "#666",
+  },
+  buttonContainer: {
+    padding: 16,
+  },
+  getPetButton: {
+    backgroundColor: "#6200EE",
+    borderRadius: 8,
+    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  getPetButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  refreshButton: {
+    backgroundColor: "#03DAC6",
+    borderRadius: 8,
+    padding: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  refreshButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
+  },
+  retryButton: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#6200EE",
+  },
+  retryButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
